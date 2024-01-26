@@ -10,6 +10,7 @@ const (
 	screenWidth  = 800
 	screenHeight = 450
 	moveSpeed    = 0.05
+	chunkSize    = 50
 )
 
 var (
@@ -18,7 +19,6 @@ var (
 	path      []rl.Vector3
 )
 
-// RayHitInfo represents information about a ray hit.
 type RayHitInfo struct {
 	Hit      bool
 	Position rl.Vector3
@@ -26,7 +26,6 @@ type RayHitInfo struct {
 	Distance float32
 }
 
-// Node represents a node in the grid for A* pathfinding
 type Node struct {
 	Position     rl.Vector3
 	GCost, HCost float64
@@ -114,7 +113,10 @@ func draw(camera rl.Camera) {
 	{
 		rl.DrawSphere(playerPos, 0.2, rl.Red)
 		rl.DrawSphere(targetPos, 0.2, rl.Green)
-		rl.DrawGrid(100, 1)
+
+		// Draw a chunk around the player
+		chunkCenter := getChunkCenter(playerPos)
+		drawChunk(chunkCenter)
 
 		if len(path) > 1 {
 			drawPath()
@@ -125,6 +127,15 @@ func draw(camera rl.Camera) {
 	rl.DrawText("Click to set pathfinding target", 10, 10, 20, rl.DarkGray)
 
 	rl.EndDrawing()
+}
+
+func drawChunk(center rl.Vector3) {
+	halfSize := float32(chunkSize) / 2.0
+	min := rl.NewVector3(center.X-halfSize, center.Y-halfSize, center.Z-halfSize)
+	max := rl.NewVector3(center.X+halfSize, center.Y+halfSize, center.Z+halfSize)
+
+	rl.DrawGrid(chunkSize, 1)
+	rl.DrawBoundingBox(rl.NewBoundingBox(min, max), rl.DarkGray)
 }
 
 func drawPath() {
@@ -197,9 +208,11 @@ func updateNeighbor(neighbor *Node, current, targetNode *Node, openSet, closedSe
 }
 
 func getNodeFromWorldPos(pos rl.Vector3) *Node {
-	gridPos := rl.NewVector3(float32(math.Floor(float64(pos.X))),
+	gridPos := rl.NewVector3(
+		float32(math.Floor(float64(pos.X))),
 		float32(math.Floor(float64(pos.Y))),
-		float32(math.Floor(float64(pos.Z))))
+		float32(math.Floor(float64(pos.Z))),
+	)
 	return &Node{Position: gridPos}
 }
 
@@ -211,10 +224,26 @@ func getNeighbors(node *Node) []*Node {
 				if x == 0 && y == 0 && z == 0 {
 					continue
 				}
-				neighborPos := rl.NewVector3(node.Position.X+float32(x), node.Position.Y+float32(y), node.Position.Z+float32(z))
+				neighborPos := rl.NewVector3(
+					node.Position.X+float32(x),
+					node.Position.Y+float32(y),
+					node.Position.Z+float32(z),
+				)
 				neighbors = append(neighbors, &Node{Position: neighborPos})
 			}
 		}
 	}
 	return neighbors
+}
+
+func getChunkCenter(pos rl.Vector3) rl.Vector3 {
+	chunkX := float32(math.Floor(float64(pos.X / chunkSize)))
+	chunkY := float32(math.Floor(float64(pos.Y / chunkSize)))
+	chunkZ := float32(math.Floor(float64(pos.Z / chunkSize)))
+
+	centerX := chunkX*chunkSize + float32(chunkSize)/2
+	centerY := chunkY*chunkSize + float32(chunkSize)/2
+	centerZ := chunkZ*chunkSize + float32(chunkSize)/2
+
+	return rl.NewVector3(centerX, centerY, centerZ)
 }
