@@ -4,6 +4,7 @@ import (
 	camera "main/camera"
 	cts "main/constants"
 	"main/entity"
+	"main/pathfinder"
 	world "main/world"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -23,6 +24,7 @@ func Process() {
 
 	playerData := entity.Init(cts.ModelPath, cts.TexturePath, cts.Position, cts.Scale)
 	camera := camera.InitCamera3D()
+	pathfinder.Init(&playerData)
 
 	for !rl.WindowShouldClose() {
 
@@ -30,7 +32,8 @@ func Process() {
 		if rl.IsKeyDown(rl.KeyZ) {
 			camera.Target = rl.NewVector3(0.0, 0.0, 0.0)
 		}
-
+		var x = 0
+		x++
 		rl.BeginDrawing()
 
 		rl.ClearBackground(rl.White)
@@ -39,7 +42,8 @@ func Process() {
 
 		rl.BeginMode3D(camera)
 		world.CreateWorld()
-		entity.Process(playerData)
+		entity.Process(&playerData, camera)
+		pathfinder.Process(camera, &playerData)
 		rl.EndMode3D()
 		rl.DrawFPS(10, 10)
 		//--------------------------------------------------------------------------------------

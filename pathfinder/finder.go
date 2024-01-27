@@ -1,24 +1,17 @@
-package main
+package pathfinder
 
 import (
+	"main/entity"
 	"math"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-// Constants
-const (
-	screenWidth  = 800
-	screenHeight = 450
-	moveSpeed    = 0.05
-	chunkSize    = 50
-)
-
-// Variables
 var (
-	playerPos = rl.NewVector3(2.5, 0, 2.5)
-	targetPos = rl.NewVector3(0, 0, 0)
 	path      []rl.Vector3
+	targetPos rl.Vector3
+	playerPos rl.Vector3
+	moveSpeed float32
 )
 
 // RayHitInfo struct represents information about a ray hit.
@@ -36,53 +29,25 @@ type Node struct {
 	Parent       *Node
 }
 
-func main() {
-	rl.InitWindow(screenWidth, screenHeight, "3D Pathfinding")
-
-	camera := initCamera()
-	rl.SetTargetFPS(60)
-
-	for !rl.WindowShouldClose() {
-		rl.UpdateCamera(&camera, rl.CameraFree)
-		if rl.IsKeyDown(rl.KeyZ) {
-			resetCameraTarget(&camera)
-		}
-		update(camera)
-		draw(camera)
-	}
-
-	rl.CloseWindow()
-}
-
-// initCamera initializes and returns a 3D camera.
-func initCamera() rl.Camera {
-	return rl.Camera{
-		Position:   rl.NewVector3(5, 4, 5),
-		Target:     rl.NewVector3(0, 0, 0),
-		Up:         rl.NewVector3(0, 1, 0),
-		Fovy:       45,
-		Projection: rl.CameraPerspective,
-	}
-}
-
-// resetCameraTarget resets the camera target to the default position.
-func resetCameraTarget(camera *rl.Camera) {
-	camera.Target = rl.NewVector3(0.0, 0.0, 0.0)
+func Init(data *entity.Player) {
+	targetPos = rl.NewVector3(0, 0, 0)
+	playerPos = data.GetModelPosition()
+	moveSpeed = 0.5
 }
 
 // update handles input and updates the game state.
-func update(camera rl.Camera) {
-	if rl.IsMouseButtonPressed(rl.MouseLeftButton) {
-		handleMouseInput(camera)
+func Process(camera rl.Camera, player *entity.Player) {
+	if rl.IsMouseButtonPressed(rl.MouseRightButton) {
+		handleMouseInput(camera, player.GetModelPosition())
 	}
 
 	if len(path) > 0 {
-		moveAlongPath()
+		moveAlongPath(player)
 	}
 }
 
 // handleMouseInput updates the target position based on mouse input and calculates a new path.
-func handleMouseInput(camera rl.Camera) {
+func handleMouseInput(camera rl.Camera, playerPos rl.Vector3) {
 	ray := rl.GetMouseRay(rl.GetMousePosition(), camera)
 	rayHit := getRayHitInfo(ray)
 
@@ -109,68 +74,22 @@ func getRayHitInfo(ray rl.Ray) RayHitInfo {
 }
 
 // moveAlongPath moves the player along the calculated path.
-func moveAlongPath() {
+func moveAlongPath(player *entity.Player) {
 	direction := rl.Vector3Subtract(path[0], playerPos)
 	distance := rl.Vector3Length(direction)
 
 	if distance > moveSpeed {
-		movePlayerAlongPath(direction)
+		movePlayerAlongPath(direction, player)
 	} else {
 		path = path[1:]
 	}
 }
 
 // movePlayerAlongPath moves the player along the given direction with a specified speed.
-func movePlayerAlongPath(direction rl.Vector3) {
+func movePlayerAlongPath(direction rl.Vector3, player *entity.Player) {
 	direction = rl.Vector3Normalize(direction)
 	playerPos = rl.Vector3Add(playerPos, rl.Vector3Scale(direction, moveSpeed))
-}
-
-// draw renders the game entities and path.
-func draw(camera rl.Camera) {
-	rl.BeginDrawing()
-
-	rl.ClearBackground(rl.RayWhite)
-
-	rl.BeginMode3D(camera)
-	{
-		drawEntities()
-
-		chunkCenter := getChunkCenter(playerPos)
-		drawChunk(chunkCenter)
-
-		if len(path) > 1 {
-			drawPath()
-		}
-	}
-	rl.EndMode3D()
-
-	rl.DrawText("Click to set pathfinding target", 10, 10, 20, rl.DarkGray)
-
-	rl.EndDrawing()
-}
-
-// drawEntities renders the player and target entities.
-func drawEntities() {
-	rl.DrawSphere(playerPos, 0.2, rl.Red)
-	rl.DrawSphere(targetPos, 0.2, rl.Green)
-}
-
-// drawChunk renders the chunk and its bounding box.
-func drawChunk(center rl.Vector3) {
-	halfSize := float32(chunkSize) / 2.0
-	min := rl.NewVector3(center.X-halfSize, center.Y-halfSize, center.Z-halfSize)
-	max := rl.NewVector3(center.X+halfSize, center.Y+halfSize, center.Z+halfSize)
-
-	rl.DrawGrid(chunkSize, 1)
-	rl.DrawBoundingBox(rl.NewBoundingBox(min, max), rl.DarkGray)
-}
-
-// drawPath renders the path as a series of connected lines.
-func drawPath() {
-	for i := 0; i < len(path)-1; i++ {
-		rl.DrawLine3D(path[i], path[i+1], rl.DarkGray)
-	}
+	player.SetModelPosition(playerPos)
 }
 
 // getCurrentNode finds the node with the lowest cost in the open set.
@@ -223,19 +142,6 @@ func getNeighbors(node *Node) []*Node {
 		}
 	}
 	return neighbors
-}
-
-// getChunkCenter calculates the center of the chunk containing a given position.
-func getChunkCenter(pos rl.Vector3) rl.Vector3 {
-	chunkX := float32(math.Floor(float64(pos.X / chunkSize)))
-	chunkY := float32(math.Floor(float64(pos.Y / chunkSize)))
-	chunkZ := float32(math.Floor(float64(pos.Z / chunkSize)))
-
-	centerX := chunkX*chunkSize + float32(chunkSize)/2
-	centerY := chunkY*chunkSize + float32(chunkSize)/2
-	centerZ := chunkZ*chunkSize + float32(chunkSize)/2
-
-	return rl.NewVector3(centerX, centerY, centerZ)
 }
 
 // heuristicEuclidean calculates the Euclidean distance between two 3D points.

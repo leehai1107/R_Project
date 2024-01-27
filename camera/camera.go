@@ -18,3 +18,8 @@ func InitCamera3D() rl.Camera3D {
 func UpdateCamera(camera *rl.Camera) {
 
 }
+
+// resetCameraTarget resets the camera target to the default position.
+func ResetCameraTarget(camera *rl.Camera) {
+	camera.Target = rl.NewVector3(0.0, 0.0, 0.0)
+}
