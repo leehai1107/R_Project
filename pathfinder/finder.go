@@ -16,23 +16,23 @@ var (
 
 // RayHitInfo struct represents information about a ray hit.
 type RayHitInfo struct {
-	Hit      bool
-	Position rl.Vector3
-	Normal   rl.Vector3
-	Distance float32
+	hit      bool
+	position rl.Vector3
+	normal   rl.Vector3
+	distance float32
 }
 
 // Node struct represents a node in the pathfinding grid.
 type Node struct {
-	Position     rl.Vector3
-	GCost, HCost float64
-	Parent       *Node
+	position     rl.Vector3
+	gCost, hCost float64
+	parent       *Node
 }
 
 func Init(data *entity.Player) {
 	targetPos = rl.NewVector3(0, 0, 0)
 	playerPos = data.GetModelPosition()
-	moveSpeed = 0.5
+	moveSpeed = 0.1
 }
 
 // update handles input and updates the game state.
@@ -51,15 +51,15 @@ func handleMouseInput(camera rl.Camera, playerPos rl.Vector3) {
 	ray := rl.GetMouseRay(rl.GetMousePosition(), camera)
 	rayHit := getRayHitInfo(ray)
 
-	if rayHit.Hit {
-		targetPos = rayHit.Position
+	if rayHit.hit {
+		targetPos = rayHit.position
 		path = findPath(playerPos, targetPos)
 	}
 }
 
 // getRayHitInfo calculates information about a ray hit on the ground.
 func getRayHitInfo(ray rl.Ray) RayHitInfo {
-	groundNormal := rl.NewVector3(0, 1, 0)
+	groundNormal := rl.NewVector3(0, 0.01, 0)
 	groundDistance := 0.0
 
 	denom := rl.Vector3DotProduct(ray.Direction, groundNormal)
@@ -67,10 +67,10 @@ func getRayHitInfo(ray rl.Ray) RayHitInfo {
 	if math.Abs(float64(denom)) > epsilon {
 		t := -(rl.Vector3DotProduct(ray.Position, groundNormal) + float32(groundDistance)) / denom
 		hitPoint := rl.Vector3Add(ray.Position, rl.Vector3Scale(ray.Direction, t))
-		return RayHitInfo{Hit: true, Position: hitPoint, Normal: groundNormal, Distance: t}
+		return RayHitInfo{hit: true, position: hitPoint, normal: groundNormal, distance: t}
 	}
 
-	return RayHitInfo{Hit: false}
+	return RayHitInfo{hit: false}
 }
 
 // moveAlongPath moves the player along the calculated path.
@@ -85,10 +85,22 @@ func moveAlongPath(player *entity.Player) {
 	}
 }
 
-// movePlayerAlongPath moves the player along the given direction with a specified speed.
 func movePlayerAlongPath(direction rl.Vector3, player *entity.Player) {
 	direction = rl.Vector3Normalize(direction)
 	playerPos = rl.Vector3Add(playerPos, rl.Vector3Scale(direction, moveSpeed))
+
+	// Smoothly interpolate between path points for smoother movement
+	if len(path) > 1 {
+		distanceToNextPoint := rl.Vector3Distance(playerPos, path[0])
+		if distanceToNextPoint < moveSpeed {
+			path = path[1:]
+		}
+		if len(path) > 1 {
+			directionToNextPoint := rl.Vector3Subtract(path[0], playerPos)
+			directionToNextPoint = rl.Vector3Normalize(directionToNextPoint)
+			playerPos = rl.Vector3Add(playerPos, rl.Vector3Scale(directionToNextPoint, moveSpeed))
+		}
+	}
 	player.SetModelPosition(playerPos)
 }
 
@@ -96,7 +108,7 @@ func movePlayerAlongPath(direction rl.Vector3, player *entity.Player) {
 func getCurrentNode(openSet map[rl.Vector3]*Node) *Node {
 	var current *Node
 	for _, node := range openSet {
-		if current == nil || (node.GCost+node.HCost) < (current.GCost+current.HCost) {
+		if current == nil || (node.gCost+node.hCost) < (current.gCost+current.hCost) {
 			current = node
 		}
 	}
@@ -107,8 +119,8 @@ func getCurrentNode(openSet map[rl.Vector3]*Node) *Node {
 func reconstructPath(current *Node) []rl.Vector3 {
 	path := make([]rl.Vector3, 0)
 	for current != nil {
-		path = append([]rl.Vector3{current.Position}, path...)
-		current = current.Parent
+		path = append([]rl.Vector3{current.position}, path...)
+		current = current.parent
 	}
 	return path
 }
@@ -120,7 +132,7 @@ func getNodeFromWorldPos(pos rl.Vector3) *Node {
 		float32(math.Floor(float64(pos.Y))),
 		float32(math.Floor(float64(pos.Z))),
 	)
-	return &Node{Position: gridPos}
+	return &Node{position: gridPos}
 }
 
 // getNeighbors returns the neighboring nodes of a given node.
@@ -133,11 +145,11 @@ func getNeighbors(node *Node) []*Node {
 					continue
 				}
 				neighborPos := rl.NewVector3(
-					node.Position.X+float32(x),
-					node.Position.Y+float32(y),
-					node.Position.Z+float32(z),
+					node.position.X+float32(x),
+					node.position.Y+float32(y),
+					node.position.Z+float32(z),
 				)
-				neighbors = append(neighbors, &Node{Position: neighborPos})
+				neighbors = append(neighbors, &Node{position: neighborPos})
 			}
 		}
 	}
@@ -160,15 +172,15 @@ func findPath(start, target rl.Vector3) []rl.Vector3 {
 	openSet := make(map[rl.Vector3]*Node)
 	closedSet := make(map[rl.Vector3]*Node)
 
-	openSet[startNode.Position] = startNode
+	openSet[startNode.position] = startNode
 
 	for len(openSet) > 0 {
 		current := getCurrentNode(openSet)
 
-		delete(openSet, current.Position)
-		closedSet[current.Position] = current
+		delete(openSet, current.position)
+		closedSet[current.position] = current
 
-		if current.Position == targetNode.Position {
+		if current.position == targetNode.position {
 			return reconstructPath(current)
 		}
 
@@ -183,17 +195,17 @@ func findPath(start, target rl.Vector3) []rl.Vector3 {
 
 // updateNeighbor updates the neighbor's cost and parent if a shorter path is found.
 func updateNeighbor(neighbor *Node, current, targetNode *Node, openSet, closedSet map[rl.Vector3]*Node) {
-	if closedSet[neighbor.Position] != nil {
+	if closedSet[neighbor.position] != nil {
 		return
 	}
 
-	tentativeGCost := float64(current.GCost) + float64(rl.Vector3Distance(current.Position, neighbor.Position))
+	tentativeGCost := float64(current.gCost) + float64(rl.Vector3Distance(current.position, neighbor.position))
 
-	if openSet[neighbor.Position] == nil || tentativeGCost < float64(openSet[neighbor.Position].GCost) {
-		neighbor.GCost = tentativeGCost
-		neighbor.HCost = heuristicEuclidean(neighbor.Position, targetNode.Position)
-		neighbor.Parent = current
+	if openSet[neighbor.position] == nil || tentativeGCost < float64(openSet[neighbor.position].gCost) {
+		neighbor.gCost = tentativeGCost
+		neighbor.hCost = heuristicEuclidean(neighbor.position, targetNode.position)
+		neighbor.parent = current
 
-		openSet[neighbor.Position] = neighbor
+		openSet[neighbor.position] = neighbor
 	}
 }
