@@ -1,6 +1,7 @@
 package pathfinder
 
 import (
+	"container/heap"
 	"main/entity"
 	"math"
 
@@ -27,12 +28,40 @@ type Node struct {
 	position     rl.Vector3
 	gCost, hCost float64
 	parent       *Node
+	index        int // Index in the priority queue
 }
 
 func Init(data *entity.Player) {
 	targetPos = rl.NewVector3(0, 0, 0)
 	playerPos = data.GetModelPosition()
 	moveSpeed = 0.1
+}
+
+// PriorityQueue is a min heap for nodes based on total cost.
+type PriorityQueue []*Node
+
+func (pq PriorityQueue) Len() int { return len(pq) }
+func (pq PriorityQueue) Less(i, j int) bool {
+	return (pq[i].gCost + pq[i].hCost) < (pq[j].gCost + pq[j].hCost)
+}
+func (pq PriorityQueue) Swap(i, j int) {
+	pq[i], pq[j] = pq[j], pq[i]
+	pq[i].index = i
+	pq[j].index = j
+}
+func (pq *PriorityQueue) Push(x interface{}) {
+	n := len(*pq)
+	node := x.(*Node)
+	node.index = n
+	*pq = append(*pq, node)
+}
+func (pq *PriorityQueue) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	node := old[n-1]
+	node.index = -1 // for safety
+	*pq = old[0 : n-1]
+	return node
 }
 
 // update handles input and updates the game state.
@@ -91,28 +120,25 @@ func movePlayerAlongPath(direction rl.Vector3, player *entity.Player) {
 
 	// Smoothly interpolate between path points for smoother movement
 	if len(path) > 1 {
+		directionToNextPoint := rl.Vector3Subtract(path[0], playerPos)
+		directionToNextPoint = rl.Vector3Normalize(directionToNextPoint)
+		playerPos = rl.Vector3Add(playerPos, rl.Vector3Scale(directionToNextPoint, moveSpeed))
+
+		// Check if reached the next point
 		distanceToNextPoint := rl.Vector3Distance(playerPos, path[0])
 		if distanceToNextPoint < moveSpeed {
 			path = path[1:]
-		}
-		if len(path) > 1 {
-			directionToNextPoint := rl.Vector3Subtract(path[0], playerPos)
-			directionToNextPoint = rl.Vector3Normalize(directionToNextPoint)
-			playerPos = rl.Vector3Add(playerPos, rl.Vector3Scale(directionToNextPoint, moveSpeed))
 		}
 	}
 	player.SetModelPosition(playerPos)
 }
 
-// getCurrentNode finds the node with the lowest cost in the open set.
-func getCurrentNode(openSet map[rl.Vector3]*Node) *Node {
-	var current *Node
-	for _, node := range openSet {
-		if current == nil || (node.gCost+node.hCost) < (current.gCost+current.hCost) {
-			current = node
-		}
+// getCurrentNode finds the node with the lowest cost in the open set using a priority queue.
+func getCurrentNode(openSet *PriorityQueue) *Node {
+	if openSet.Len() == 0 {
+		return nil
 	}
-	return current
+	return heap.Pop(openSet).(*Node)
 }
 
 // reconstructPath reconstructs the path by traversing the parent pointers.
@@ -161,23 +187,23 @@ func heuristicEuclidean(a, b rl.Vector3) float64 {
 	dx := float64(a.X - b.X)
 	dy := float64(a.Y - b.Y)
 	dz := float64(a.Z - b.Z)
-	return math.Sqrt(dx*dx + dy*dy + dz*dz)
+	return (dx*dx + dy*dy + dz*dz)
 }
 
-// findPath performs A* pathfinding to find a path from start to target.
+// findPath performs A* pathfinding to find a path from start to target using a priority queue.
 func findPath(start, target rl.Vector3) []rl.Vector3 {
 	startNode := getNodeFromWorldPos(start)
 	targetNode := getNodeFromWorldPos(target)
 
-	openSet := make(map[rl.Vector3]*Node)
+	openSet := make(PriorityQueue, 0)
+	heap.Init(&openSet)
 	closedSet := make(map[rl.Vector3]*Node)
 
-	openSet[startNode.position] = startNode
+	heap.Push(&openSet, startNode)
 
-	for len(openSet) > 0 {
-		current := getCurrentNode(openSet)
+	for openSet.Len() > 0 {
+		current := getCurrentNode(&openSet)
 
-		delete(openSet, current.position)
 		closedSet[current.position] = current
 
 		if current.position == targetNode.position {
@@ -186,26 +212,40 @@ func findPath(start, target rl.Vector3) []rl.Vector3 {
 
 		neighbors := getNeighbors(current)
 		for _, neighbor := range neighbors {
-			updateNeighbor(neighbor, current, targetNode, openSet, closedSet)
+			updateNeighbor(neighbor, current, targetNode, &openSet, closedSet)
 		}
 	}
 
 	return []rl.Vector3{}
 }
 
-// updateNeighbor updates the neighbor's cost and parent if a shorter path is found.
-func updateNeighbor(neighbor *Node, current, targetNode *Node, openSet, closedSet map[rl.Vector3]*Node) {
+// updateNeighbor updates the neighbor's cost and parent if a shorter path is found using a priority queue.
+func updateNeighbor(neighbor *Node, current, targetNode *Node, openSet *PriorityQueue, closedSet map[rl.Vector3]*Node) {
 	if closedSet[neighbor.position] != nil {
 		return
 	}
 
 	tentativeGCost := float64(current.gCost) + float64(rl.Vector3Distance(current.position, neighbor.position))
 
-	if openSet[neighbor.position] == nil || tentativeGCost < float64(openSet[neighbor.position].gCost) {
-		neighbor.gCost = tentativeGCost
-		neighbor.hCost = heuristicEuclidean(neighbor.position, targetNode.position)
-		neighbor.parent = current
-
-		openSet[neighbor.position] = neighbor
+	if openSetContains(openSet, neighbor) && tentativeGCost >= float64(neighbor.gCost) {
+		return
 	}
+
+	neighbor.gCost = tentativeGCost
+	neighbor.hCost = heuristicEuclidean(neighbor.position, targetNode.position)
+	neighbor.parent = current
+
+	if !openSetContains(openSet, neighbor) {
+		heap.Push(openSet, neighbor)
+	}
+}
+
+// openSetContains checks if the priority queue (open set) contains a node.
+func openSetContains(openSet *PriorityQueue, node *Node) bool {
+	for _, n := range *openSet {
+		if n.position == node.position {
+			return true
+		}
+	}
+	return false
 }

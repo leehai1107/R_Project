@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/heap"
 	"math"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -11,7 +12,7 @@ const (
 	screenWidth  = 800
 	screenHeight = 450
 	moveSpeed    = 0.05
-	chunkSize    = 50
+	gridSize     = 50
 )
 
 // Variables
@@ -34,8 +35,37 @@ type Node struct {
 	Position     rl.Vector3
 	GCost, HCost float64
 	Parent       *Node
+	Index        int // Index in the priority queue
 }
 
+// PriorityQueue is a min heap for nodes based on total cost.
+type PriorityQueue []*Node
+
+func (pq PriorityQueue) Len() int { return len(pq) }
+func (pq PriorityQueue) Less(i, j int) bool {
+	return (pq[i].GCost + pq[i].HCost) < (pq[j].GCost + pq[j].HCost)
+}
+func (pq PriorityQueue) Swap(i, j int) {
+	pq[i], pq[j] = pq[j], pq[i]
+	pq[i].Index = i
+	pq[j].Index = j
+}
+func (pq *PriorityQueue) Push(x interface{}) {
+	n := len(*pq)
+	node := x.(*Node)
+	node.Index = n
+	*pq = append(*pq, node)
+}
+func (pq *PriorityQueue) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	node := old[n-1]
+	node.Index = -1 // for safety
+	*pq = old[0 : n-1]
+	return node
+}
+
+// main function
 func main() {
 	rl.InitWindow(screenWidth, screenHeight, "3D Pathfinding")
 
@@ -86,7 +116,7 @@ func handleMouseInput(camera rl.Camera) {
 	ray := rl.GetMouseRay(rl.GetMousePosition(), camera)
 	rayHit := getRayHitInfo(ray)
 
-	if rayHit.Hit {
+	if rayHit.Hit && !rl.Vector3Equals(rayHit.Position, playerPos) {
 		targetPos = rayHit.Position
 		path = findPath(playerPos, targetPos)
 	}
@@ -127,14 +157,14 @@ func movePlayerAlongPath(direction rl.Vector3) {
 
 	// Smoothly interpolate between path points for smoother movement
 	if len(path) > 1 {
+		directionToNextPoint := rl.Vector3Subtract(path[0], playerPos)
+		directionToNextPoint = rl.Vector3Normalize(directionToNextPoint)
+		playerPos = rl.Vector3Add(playerPos, rl.Vector3Scale(directionToNextPoint, moveSpeed))
+
+		// Check if reached the next point
 		distanceToNextPoint := rl.Vector3Distance(playerPos, path[0])
 		if distanceToNextPoint < moveSpeed {
 			path = path[1:]
-		}
-		if len(path) > 1 {
-			directionToNextPoint := rl.Vector3Subtract(path[0], playerPos)
-			directionToNextPoint = rl.Vector3Normalize(directionToNextPoint)
-			playerPos = rl.Vector3Add(playerPos, rl.Vector3Scale(directionToNextPoint, moveSpeed))
 		}
 	}
 }
@@ -149,8 +179,7 @@ func draw(camera rl.Camera) {
 	{
 		drawEntities()
 
-		chunkCenter := getChunkCenter(playerPos)
-		drawChunk(chunkCenter)
+		rl.DrawGrid(gridSize, 1)
 
 		if len(path) > 1 {
 			drawPath()
@@ -169,16 +198,6 @@ func drawEntities() {
 	rl.DrawSphere(targetPos, 0.2, rl.Green)
 }
 
-// drawChunk renders the chunk and its bounding box.
-func drawChunk(center rl.Vector3) {
-	halfSize := float32(chunkSize) / 2.0
-	min := rl.NewVector3(center.X-halfSize, center.Y-halfSize, center.Z-halfSize)
-	max := rl.NewVector3(center.X+halfSize, center.Y+halfSize, center.Z+halfSize)
-
-	rl.DrawGrid(chunkSize, 1)
-	rl.DrawBoundingBox(rl.NewBoundingBox(min, max), rl.DarkGray)
-}
-
 // drawPath renders the path as a series of connected lines.
 func drawPath() {
 	for i := 0; i < len(path)-1; i++ {
@@ -186,15 +205,12 @@ func drawPath() {
 	}
 }
 
-// getCurrentNode finds the node with the lowest cost in the open set.
-func getCurrentNode(openSet map[rl.Vector3]*Node) *Node {
-	var current *Node
-	for _, node := range openSet {
-		if current == nil || (node.GCost+node.HCost) < (current.GCost+current.HCost) {
-			current = node
-		}
+// getCurrentNode finds the node with the lowest cost in the open set using a priority queue.
+func getCurrentNode(openSet *PriorityQueue) *Node {
+	if openSet.Len() == 0 {
+		return nil
 	}
-	return current
+	return heap.Pop(openSet).(*Node)
 }
 
 // reconstructPath reconstructs the path by traversing the parent pointers.
@@ -238,41 +254,28 @@ func getNeighbors(node *Node) []*Node {
 	return neighbors
 }
 
-// getChunkCenter calculates the center of the chunk containing a given position.
-func getChunkCenter(pos rl.Vector3) rl.Vector3 {
-	chunkX := float32(math.Floor(float64(pos.X / chunkSize)))
-	chunkY := float32(math.Floor(float64(pos.Y / chunkSize)))
-	chunkZ := float32(math.Floor(float64(pos.Z / chunkSize)))
-
-	centerX := chunkX*chunkSize + float32(chunkSize)/2
-	centerY := chunkY*chunkSize + float32(chunkSize)/2
-	centerZ := chunkZ*chunkSize + float32(chunkSize)/2
-
-	return rl.NewVector3(centerX, centerY, centerZ)
-}
-
 // heuristicEuclidean calculates the Euclidean distance between two 3D points.
 func heuristicEuclidean(a, b rl.Vector3) float64 {
 	dx := float64(a.X - b.X)
 	dy := float64(a.Y - b.Y)
 	dz := float64(a.Z - b.Z)
-	return math.Sqrt(dx*dx + dy*dy + dz*dz)
+	return (dx*dx + dy*dy + dz*dz)
 }
 
-// findPath performs A* pathfinding to find a path from start to target.
+// findPath performs A* pathfinding to find a path from start to target using a priority queue.
 func findPath(start, target rl.Vector3) []rl.Vector3 {
 	startNode := getNodeFromWorldPos(start)
 	targetNode := getNodeFromWorldPos(target)
 
-	openSet := make(map[rl.Vector3]*Node)
+	openSet := make(PriorityQueue, 0)
+	heap.Init(&openSet)
 	closedSet := make(map[rl.Vector3]*Node)
 
-	openSet[startNode.Position] = startNode
+	heap.Push(&openSet, startNode)
 
-	for len(openSet) > 0 {
-		current := getCurrentNode(openSet)
+	for openSet.Len() > 0 {
+		current := getCurrentNode(&openSet)
 
-		delete(openSet, current.Position)
 		closedSet[current.Position] = current
 
 		if current.Position == targetNode.Position {
@@ -281,26 +284,40 @@ func findPath(start, target rl.Vector3) []rl.Vector3 {
 
 		neighbors := getNeighbors(current)
 		for _, neighbor := range neighbors {
-			updateNeighbor(neighbor, current, targetNode, openSet, closedSet)
+			updateNeighbor(neighbor, current, targetNode, &openSet, closedSet)
 		}
 	}
 
 	return []rl.Vector3{}
 }
 
-// updateNeighbor updates the neighbor's cost and parent if a shorter path is found.
-func updateNeighbor(neighbor *Node, current, targetNode *Node, openSet, closedSet map[rl.Vector3]*Node) {
+// updateNeighbor updates the neighbor's cost and parent if a shorter path is found using a priority queue.
+func updateNeighbor(neighbor *Node, current, targetNode *Node, openSet *PriorityQueue, closedSet map[rl.Vector3]*Node) {
 	if closedSet[neighbor.Position] != nil {
 		return
 	}
 
 	tentativeGCost := float64(current.GCost) + float64(rl.Vector3Distance(current.Position, neighbor.Position))
 
-	if openSet[neighbor.Position] == nil || tentativeGCost < float64(openSet[neighbor.Position].GCost) {
-		neighbor.GCost = tentativeGCost
-		neighbor.HCost = heuristicEuclidean(neighbor.Position, targetNode.Position)
-		neighbor.Parent = current
-
-		openSet[neighbor.Position] = neighbor
+	if openSetContains(openSet, neighbor) && tentativeGCost >= float64(neighbor.GCost) {
+		return
 	}
+
+	neighbor.GCost = tentativeGCost
+	neighbor.HCost = heuristicEuclidean(neighbor.Position, targetNode.Position)
+	neighbor.Parent = current
+
+	if !openSetContains(openSet, neighbor) {
+		heap.Push(openSet, neighbor)
+	}
+}
+
+// openSetContains checks if the priority queue (open set) contains a node.
+func openSetContains(openSet *PriorityQueue, node *Node) bool {
+	for _, n := range *openSet {
+		if n.Position == node.Position {
+			return true
+		}
+	}
+	return false
 }
