@@ -20,15 +20,12 @@ var (
 	playerPos = rl.NewVector3(2.5, 0, 2.5)
 	targetPos = rl.NewVector3(0, 0, 0)
 	path      []rl.Vector3
-)
 
-// RayHitInfo struct represents information about a ray hit.
-type RayHitInfo struct {
-	Hit      bool
-	Position rl.Vector3
-	Normal   rl.Vector3
-	Distance float32
-}
+	g0 = rl.NewVector3(-50.0, 0.0, -50.0)
+	g1 = rl.NewVector3(-50.0, 0.0, 50.0)
+	g2 = rl.NewVector3(50.0, 0.0, 50.0)
+	g3 = rl.NewVector3(50.0, 0.0, -50.0)
+)
 
 // Node struct represents a node in the pathfinding grid.
 type Node struct {
@@ -41,15 +38,9 @@ type Node struct {
 // PriorityQueue is a min heap for nodes based on total cost.
 type PriorityQueue []*Node
 
-func (pq PriorityQueue) Len() int { return len(pq) }
-func (pq PriorityQueue) Less(i, j int) bool {
-	return (pq[i].GCost + pq[i].HCost) < (pq[j].GCost + pq[j].HCost)
-}
-func (pq PriorityQueue) Swap(i, j int) {
-	pq[i], pq[j] = pq[j], pq[i]
-	pq[i].Index = i
-	pq[j].Index = j
-}
+func (pq PriorityQueue) Len() int           { return len(pq) }
+func (pq PriorityQueue) Less(i, j int) bool { return pq[i].GCost+pq[i].HCost < pq[j].GCost+pq[j].HCost }
+func (pq PriorityQueue) Swap(i, j int)      { pq[i], pq[j] = pq[j], pq[i]; pq[i].Index, pq[j].Index = i, j }
 func (pq *PriorityQueue) Push(x interface{}) {
 	n := len(*pq)
 	node := x.(*Node)
@@ -114,28 +105,12 @@ func update(camera rl.Camera) {
 // handleMouseInput updates the target position based on mouse input and calculates a new path.
 func handleMouseInput(camera rl.Camera) {
 	ray := rl.GetMouseRay(rl.GetMousePosition(), camera)
-	rayHit := getRayHitInfo(ray)
+	rayHit := rl.GetRayCollisionQuad(ray, g0, g1, g2, g3)
 
-	if rayHit.Hit && !rl.Vector3Equals(rayHit.Position, playerPos) {
-		targetPos = rayHit.Position
+	if rayHit.Hit && !rl.Vector3Equals(rayHit.Point, playerPos) {
+		targetPos = rayHit.Point
 		path = findPath(playerPos, targetPos)
 	}
-}
-
-// getRayHitInfo calculates information about a ray hit on the ground.
-func getRayHitInfo(ray rl.Ray) RayHitInfo {
-	groundNormal := rl.NewVector3(0, 1, 0)
-	groundDistance := 0.0
-
-	denom := rl.Vector3DotProduct(ray.Direction, groundNormal)
-	epsilon := math.Nextafter(0, 1)
-	if math.Abs(float64(denom)) > epsilon {
-		t := -(rl.Vector3DotProduct(ray.Position, groundNormal) + float32(groundDistance)) / denom
-		hitPoint := rl.Vector3Add(ray.Position, rl.Vector3Scale(ray.Direction, t))
-		return RayHitInfo{Hit: true, Position: hitPoint, Normal: groundNormal, Distance: t}
-	}
-
-	return RayHitInfo{Hit: false}
 }
 
 // moveAlongPath moves the player along the calculated path.
@@ -164,7 +139,7 @@ func movePlayerAlongPath(direction rl.Vector3) {
 		// Check if reached the next point
 		distanceToNextPoint := rl.Vector3Distance(playerPos, path[0])
 		if distanceToNextPoint < moveSpeed {
-			path = path[1:]
+			path = path[1:] // Remove the reached point from the path
 		}
 	}
 }
@@ -226,9 +201,9 @@ func reconstructPath(current *Node) []rl.Vector3 {
 // getNodeFromWorldPos converts a world position to a grid node.
 func getNodeFromWorldPos(pos rl.Vector3) *Node {
 	gridPos := rl.NewVector3(
-		float32(math.Floor(float64(pos.X))),
-		float32(math.Floor(float64(pos.Y))),
-		float32(math.Floor(float64(pos.Z))),
+		float32(math.Ceil(float64(pos.X))),
+		float32(math.Ceil(float64(pos.Y))),
+		float32(math.Ceil(float64(pos.Z))),
 	)
 	return &Node{Position: gridPos}
 }
@@ -236,9 +211,9 @@ func getNodeFromWorldPos(pos rl.Vector3) *Node {
 // getNeighbors returns the neighboring nodes of a given node.
 func getNeighbors(node *Node) []*Node {
 	neighbors := make([]*Node, 0)
-	for x := -1; x <= 1; x++ {
-		for y := -1; y <= 1; y++ {
-			for z := -1; z <= 1; z++ {
+	for x := -0.5; x <= 0.5; x = x + 0.5 {
+		for y := -0.5; y <= 0.5; y = y + 0.5 {
+			for z := -0.5; z <= 0.5; z = z + 0.5 {
 				if x == 0 && y == 0 && z == 0 {
 					continue
 				}

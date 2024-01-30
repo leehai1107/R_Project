@@ -2,6 +2,7 @@ package pathfinder
 
 import (
 	"container/heap"
+	cts "main/constants"
 	"main/entity"
 	"math"
 
@@ -13,15 +14,12 @@ var (
 	targetPos rl.Vector3
 	playerPos rl.Vector3
 	moveSpeed float32
-)
 
-// RayHitInfo struct represents information about a ray hit.
-type RayHitInfo struct {
-	hit      bool
-	position rl.Vector3
-	normal   rl.Vector3
-	distance float32
-}
+	g0 = rl.NewVector3(playerPos.X-cts.GridSize, 0.0, playerPos.Z-cts.GridSize)
+	g1 = rl.NewVector3(playerPos.X-cts.GridSize, 0.0, playerPos.Z+cts.GridSize)
+	g2 = rl.NewVector3(playerPos.X+cts.GridSize, 0.0, playerPos.Z+cts.GridSize)
+	g3 = rl.NewVector3(playerPos.X+cts.GridSize, 0.0, playerPos.Z-cts.GridSize)
+)
 
 // Node struct represents a node in the pathfinding grid.
 type Node struct {
@@ -78,28 +76,12 @@ func Process(camera rl.Camera, player *entity.Player) {
 // handleMouseInput updates the target position based on mouse input and calculates a new path.
 func handleMouseInput(camera rl.Camera, playerPos rl.Vector3) {
 	ray := rl.GetMouseRay(rl.GetMousePosition(), camera)
-	rayHit := getRayHitInfo(ray)
+	rayHit := rl.GetRayCollisionQuad(ray, g0, g1, g2, g3)
 
-	if rayHit.hit {
-		targetPos = rayHit.position
+	if rayHit.Hit {
+		targetPos = rayHit.Point
 		path = findPath(playerPos, targetPos)
 	}
-}
-
-// getRayHitInfo calculates information about a ray hit on the ground.
-func getRayHitInfo(ray rl.Ray) RayHitInfo {
-	groundNormal := rl.NewVector3(0, 0.01, 0)
-	groundDistance := 0.0
-
-	denom := rl.Vector3DotProduct(ray.Direction, groundNormal)
-	epsilon := math.Nextafter(0, 1)
-	if math.Abs(float64(denom)) > epsilon {
-		t := -(rl.Vector3DotProduct(ray.Position, groundNormal) + float32(groundDistance)) / denom
-		hitPoint := rl.Vector3Add(ray.Position, rl.Vector3Scale(ray.Direction, t))
-		return RayHitInfo{hit: true, position: hitPoint, normal: groundNormal, distance: t}
-	}
-
-	return RayHitInfo{hit: false}
 }
 
 // moveAlongPath moves the player along the calculated path.
