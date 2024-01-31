@@ -2,24 +2,55 @@ package pathfinder
 
 import (
 	"container/heap"
-	cts "main/constants"
-	"main/entity"
 	"math"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
 var (
-	path      []rl.Vector3
-	targetPos rl.Vector3
-	playerPos rl.Vector3
-	moveSpeed float32
-
-	g0 = rl.NewVector3(playerPos.X-cts.GridSize, 0.0, playerPos.Z-cts.GridSize)
-	g1 = rl.NewVector3(playerPos.X-cts.GridSize, 0.0, playerPos.Z+cts.GridSize)
-	g2 = rl.NewVector3(playerPos.X+cts.GridSize, 0.0, playerPos.Z+cts.GridSize)
-	g3 = rl.NewVector3(playerPos.X+cts.GridSize, 0.0, playerPos.Z-cts.GridSize)
+	path       []rl.Vector3
+	targetPos          = rl.NewVector3(0, 0, 0)
+	currentPos         = rl.NewVector3(0, 0, 0)
+	moveSpeed  float32 = 0.1
 )
+
+func GetPath() []rl.Vector3 {
+	return path
+}
+
+func SetPath(newPath []rl.Vector3) {
+	path = newPath
+}
+
+// Getters and Setters for targetPos
+
+func GetTargetPos() rl.Vector3 {
+	return targetPos
+}
+
+func SetTargetPos(newTargetPos rl.Vector3) {
+	targetPos = newTargetPos
+}
+
+// Getters and Setters for currentPos
+
+func GetcurrentPos() rl.Vector3 {
+	return currentPos
+}
+
+func SetcurrentPos(newcurrentPos rl.Vector3) {
+	currentPos = newcurrentPos
+}
+
+// Getters and Setters for moveSpeed
+
+func GetMoveSpeed() float32 {
+	return moveSpeed
+}
+
+func SetMoveSpeed(newMoveSpeed float32) {
+	moveSpeed = newMoveSpeed
+}
 
 // Node struct represents a node in the pathfinding grid.
 type Node struct {
@@ -27,12 +58,6 @@ type Node struct {
 	gCost, hCost float64
 	parent       *Node
 	index        int // Index in the priority queue
-}
-
-func Init(data *entity.Player) {
-	targetPos = rl.NewVector3(0, 0, 0)
-	playerPos = data.GetModelPosition()
-	moveSpeed = 0.1
 }
 
 // PriorityQueue is a min heap for nodes based on total cost.
@@ -62,57 +87,8 @@ func (pq *PriorityQueue) Pop() interface{} {
 	return node
 }
 
-// update handles input and updates the game state.
-func Process(camera rl.Camera, player *entity.Player) {
-	if rl.IsMouseButtonPressed(rl.MouseRightButton) {
-		handleMouseInput(camera, player.GetModelPosition())
-	}
-
-	if len(path) > 0 {
-		moveAlongPath(player)
-	}
-}
-
-// handleMouseInput updates the target position based on mouse input and calculates a new path.
-func handleMouseInput(camera rl.Camera, playerPos rl.Vector3) {
-	ray := rl.GetMouseRay(rl.GetMousePosition(), camera)
-	rayHit := rl.GetRayCollisionQuad(ray, g0, g1, g2, g3)
-
-	if rayHit.Hit {
-		targetPos = rayHit.Point
-		path = findPath(playerPos, targetPos)
-	}
-}
-
-// moveAlongPath moves the player along the calculated path.
-func moveAlongPath(player *entity.Player) {
-	direction := rl.Vector3Subtract(path[0], playerPos)
-	distance := rl.Vector3Length(direction)
-
-	if distance > moveSpeed {
-		movePlayerAlongPath(direction, player)
-	} else {
-		path = path[1:]
-	}
-}
-
-func movePlayerAlongPath(direction rl.Vector3, player *entity.Player) {
-	direction = rl.Vector3Normalize(direction)
-	playerPos = rl.Vector3Add(playerPos, rl.Vector3Scale(direction, moveSpeed))
-
-	// Smoothly interpolate between path points for smoother movement
-	if len(path) > 1 {
-		directionToNextPoint := rl.Vector3Subtract(path[0], playerPos)
-		directionToNextPoint = rl.Vector3Normalize(directionToNextPoint)
-		playerPos = rl.Vector3Add(playerPos, rl.Vector3Scale(directionToNextPoint, moveSpeed))
-
-		// Check if reached the next point
-		distanceToNextPoint := rl.Vector3Distance(playerPos, path[0])
-		if distanceToNextPoint < moveSpeed {
-			path = path[1:]
-		}
-	}
-	player.SetModelPosition(playerPos)
+func FindPath(target rl.Vector3) {
+	path = findPath(currentPos, target)
 }
 
 // getCurrentNode finds the node with the lowest cost in the open set using a priority queue.
@@ -136,9 +112,9 @@ func reconstructPath(current *Node) []rl.Vector3 {
 // getNodeFromWorldPos converts a world position to a grid node.
 func getNodeFromWorldPos(pos rl.Vector3) *Node {
 	gridPos := rl.NewVector3(
-		float32(math.Floor(float64(pos.X))),
-		float32(math.Floor(float64(pos.Y))),
-		float32(math.Floor(float64(pos.Z))),
+		float32(math.Ceil(float64(pos.X))),
+		float32(math.Ceil(float64(pos.Y))),
+		float32(math.Ceil(float64(pos.Z))),
 	)
 	return &Node{position: gridPos}
 }
@@ -146,9 +122,10 @@ func getNodeFromWorldPos(pos rl.Vector3) *Node {
 // getNeighbors returns the neighboring nodes of a given node.
 func getNeighbors(node *Node) []*Node {
 	neighbors := make([]*Node, 0)
-	for x := -1; x <= 1; x++ {
-		for y := -1; y <= 1; y++ {
-			for z := -1; z <= 1; z++ {
+
+	for x := -0.5; x <= 0.5; x += 0.5 {
+		for y := -0.5; y <= 0.5; y += 0.5 {
+			for z := -0.5; z <= 0.5; z += 0.5 {
 				if x == 0 && y == 0 && z == 0 {
 					continue
 				}

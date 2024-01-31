@@ -21,10 +21,10 @@ var (
 	targetPos = rl.NewVector3(0, 0, 0)
 	path      []rl.Vector3
 
-	g0 = rl.NewVector3(-50.0, 0.0, -50.0)
-	g1 = rl.NewVector3(-50.0, 0.0, 50.0)
-	g2 = rl.NewVector3(50.0, 0.0, 50.0)
-	g3 = rl.NewVector3(50.0, 0.0, -50.0)
+	g0 = rl.NewVector3(-15.0, 0.0, -15.0)
+	g1 = rl.NewVector3(-15.0, 0.0, 15.0)
+	g2 = rl.NewVector3(15.0, 0.0, 15.0)
+	g3 = rl.NewVector3(15.0, 0.0, -15.0)
 )
 
 // Node struct represents a node in the pathfinding grid.
@@ -154,6 +154,8 @@ func draw(camera rl.Camera) {
 	{
 		drawEntities()
 
+		rl.DrawPlane(playerPos, rl.NewVector2(30.0, 30.0), rl.Blue)
+
 		rl.DrawGrid(gridSize, 1)
 
 		if len(path) > 1 {
@@ -211,9 +213,10 @@ func getNodeFromWorldPos(pos rl.Vector3) *Node {
 // getNeighbors returns the neighboring nodes of a given node.
 func getNeighbors(node *Node) []*Node {
 	neighbors := make([]*Node, 0)
-	for x := -0.5; x <= 0.5; x = x + 0.5 {
-		for y := -0.5; y <= 0.5; y = y + 0.5 {
-			for z := -0.5; z <= 0.5; z = z + 0.5 {
+
+	for x := -0.5; x <= 0.5; x += 0.5 {
+		for y := -0.5; y <= 0.5; y += 0.5 {
+			for z := -0.5; z <= 0.5; z += 0.5 {
 				if x == 0 && y == 0 && z == 0 {
 					continue
 				}
