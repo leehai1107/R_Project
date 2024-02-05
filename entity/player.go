@@ -55,7 +55,7 @@ func (p *Player) GetModelPosition() rl.Vector3 {
 	return p.model.B_Position
 }
 
-func Process(data *Player, camera rl.Camera) {
+func Process(data *Player) {
 	// rl.DrawModelWires(data.GetModel().B_Model, data.GetModel().B_Position, data.GetModel().B_Scale, rl.Black)
 	rl.DrawModel(data.GetModel().B_Model, data.GetModel().B_Position, data.GetModel().B_Scale, rl.White)
 }
@@ -77,7 +77,7 @@ func (p *Player) Movement(camera rl.Camera) {
 	}
 	if len(f.GetPath()) > 0 {
 		p.moveAlongPath()
-	}
+	}  
 }
 
 // moveAlongPath moves the player along the calculated path.
@@ -115,4 +115,11 @@ func (p *Player) moveObjectAlongPath(direction rl.Vector3) {
 func CleanUp(data *Player) {
 	rl.UnloadModel(data.model.B_Model)
 	rl.UnloadTexture(data.model.B_Texture)
+}
+
+func(p *Player) DrawCollision(){
+  min := rl.NewVector3(p.GetModelPosition().X, p.GetModelPosition().Y , p.GetModelPosition().Z)
+  max := rl.NewVector3(p.GetModelPosition().X + 1, p.GetModelPosition().Y + 1 , p.GetModelPosition().Z + 1)
+  box := rl.NewBoundingBox(min , max )
+  rl.DrawBoundingBox(box ,rl.Green)
 }

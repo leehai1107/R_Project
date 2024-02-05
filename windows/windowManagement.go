@@ -39,7 +39,8 @@ func Process() {
 
 		rl.BeginMode3D(camera)
 		world.CreateWorld()
-		entity.Process(playerData, camera)
+		entity.Process(playerData)
+    playerData.DrawCollision()
 
 		rl.EndMode3D()
 		rl.DrawFPS(10, 10)

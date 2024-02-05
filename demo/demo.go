@@ -64,7 +64,7 @@ func main() {
 	rl.SetTargetFPS(60)
 
 	for !rl.WindowShouldClose() {
-		rl.UpdateCamera(&camera, rl.CameraFree)
+		rl.UpdateCamera(&camera, rl.CameraMode(rl.CameraOrthographic))
 		if rl.IsKeyDown(rl.KeyZ) {
 			resetCameraTarget(&camera)
 		}
@@ -154,15 +154,14 @@ func draw(camera rl.Camera) {
 	{
 		drawEntities()
 
-		rl.DrawPlane(playerPos, rl.NewVector2(30.0, 30.0), rl.Blue)
-
-		rl.DrawGrid(gridSize, 1)
+		rl.DrawGrid(gridSize, 10)
 
 		if len(path) > 1 {
 			drawPath()
 		}
 	}
 	rl.EndMode3D()
+	rl.DrawFPS(30, 30)
 
 	rl.DrawText("Click to set pathfinding target", 10, 10, 20, rl.DarkGray)
 
