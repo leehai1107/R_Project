@@ -2,76 +2,84 @@ package model
 
 import rl "github.com/gen2brain/raylib-go/raylib"
 
-type BaseModel struct {
-	B_Model    rl.Model
-	B_Texture  rl.Texture2D
-	B_Position rl.Vector3
-	B_Scale    float32
+type BaseModel interface {
+	SetModel(newModel rl.Model)
+	GetModel() rl.Model
+	SetTexture(newTexture rl.Texture2D)
+	GetTexture() rl.Texture2D
+	SetPosition(newPosition rl.Vector3)
+	GetPosition() rl.Vector3
+	SetScale(newScale float32)
+	GetScale() float32
+	Process(model rl.Model, position rl.Vector3, scale float32)
+	CleanUp(model rl.Model, texture rl.Texture2D)
 }
 
 // NewBaseModel creates a new instance of BaseModel with initial values
-func NewBaseModel(initialModel rl.Model, initialTexture rl.Texture2D, initialPosition rl.Vector3, initialScale float32) *BaseModel {
-	return &BaseModel{
-		B_Model:    initialModel,
-		B_Texture:  initialTexture,
-		B_Position: initialPosition,
-		B_Scale:    initialScale,
+func NewBaseModel(modelPath string, texturePath string, posistion rl.Vector3, scale float32) BaseModel {
+	model := rl.LoadModel(modelPath)
+	texture := rl.LoadTexture(texturePath)
+	rl.SetMaterialTexture(model.Materials, rl.MapDiffuse, texture)
+	return &baseModel{
+		b_Model:    model,
+		b_Texture:  texture,
+		b_Position: posistion,
+		b_Scale:    scale,
 	}
 }
 
+type baseModel struct {
+	b_Model    rl.Model
+	b_Texture  rl.Texture2D
+	b_Position rl.Vector3
+	b_Scale    float32
+}
+
 // SetModel allows you to set the B_Model from outside the package
-func (bm *BaseModel) SetModel(newModel rl.Model) {
-	bm.B_Model = newModel
+func (bm *baseModel) SetModel(newModel rl.Model) {
+	bm.b_Model = newModel
 }
 
 // GetModel allows you to get the B_Model from outside the package
-func (bm *BaseModel) GetModel() rl.Model {
-	return bm.B_Model
+func (bm *baseModel) GetModel() rl.Model {
+	return bm.b_Model
 }
 
 // SetTexture allows you to set the B_Texture from outside the package
-func (bm *BaseModel) SetTexture(newTexture rl.Texture2D) {
-	bm.B_Texture = newTexture
+func (bm *baseModel) SetTexture(newTexture rl.Texture2D) {
+	bm.b_Texture = newTexture
 }
 
 // GetTexture allows you to get the B_Texture from outside the package
-func (bm *BaseModel) GetTexture() rl.Texture2D {
-	return bm.B_Texture
+func (bm *baseModel) GetTexture() rl.Texture2D {
+	return bm.b_Texture
 }
 
 // SetPosition allows you to set the B_Position from outside the package
-func (bm *BaseModel) SetPosition(newPosition rl.Vector3) {
-	bm.B_Position = newPosition
+func (bm *baseModel) SetPosition(newPosition rl.Vector3) {
+	bm.b_Position = newPosition
 }
 
 // GetPosition allows you to get the B_Position from outside the package
-func (bm *BaseModel) GetPosition() rl.Vector3 {
-	return bm.B_Position
+func (bm *baseModel) GetPosition() rl.Vector3 {
+	return bm.b_Position
 }
 
 // SetScale allows you to set the B_Scale from outside the package
-func (bm *BaseModel) SetScale(newScale float32) {
-	bm.B_Scale = newScale
+func (bm *baseModel) SetScale(newScale float32) {
+	bm.b_Scale = newScale
 }
 
 // GetScale allows you to get the B_Scale from outside the package
-func (bm *BaseModel) GetScale() float32 {
-	return bm.B_Scale
+func (bm *baseModel) GetScale() float32 {
+	return bm.b_Scale
 }
 
-func Init(ModelPath string, TexturePath string, Posistion rl.Vector3, Scale float32) (data BaseModel) {
-	data.B_Model = rl.LoadModel(ModelPath)
-	data.B_Texture = rl.LoadTexture(TexturePath)
-	rl.SetMaterialTexture(data.B_Model.Materials, rl.MapDiffuse, data.B_Texture) // Set map diffuse texture
-	data.B_Scale = Scale
-	return data
+func (bm *baseModel) Process(model rl.Model, position rl.Vector3, scale float32) {
+	rl.DrawModel(model, position, scale, rl.White)
 }
 
-func Process(Data BaseModel) {
-	rl.DrawModel(Data.B_Model, Data.B_Position, Data.B_Scale, rl.White)
-}
-
-func CleanUp(Data BaseModel) {
-	rl.UnloadTexture(Data.B_Texture)
-	rl.UnloadModel(Data.B_Model)
+func (bm *baseModel) CleanUp(model rl.Model, texture rl.Texture2D) {
+	rl.UnloadTexture(texture)
+	rl.UnloadModel(model)
 }

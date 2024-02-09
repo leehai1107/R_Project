@@ -1,46 +1,55 @@
 package stats
 
-type StaticStat struct {
-	Health int
-	Mana   int
-	Speed  int
+type StaticStat interface {
+	SetHealth(newHealth int)
+	GetHealth() int
+	SetMana(newMana int)
+	GetMana() int
+	SetSpeed(newSpeed int)
+	GetSpeed() int
+}
+
+type staticStat struct {
+	health int
+	mana   int
+	speed  int
 }
 
 // NewStaticStat creates a new instance of StaticStat with initial values
-func NewStaticStat(initialHealth, initialMana, initialSpeed int) *StaticStat {
-	return &StaticStat{
-		Health: initialHealth,
-		Mana:   initialMana,
-		Speed:  initialSpeed,
+func NewStaticStat(initialHealth, initialMana, initialSpeed int) StaticStat {
+	return &staticStat{
+		health: initialHealth,
+		mana:   initialMana,
+		speed:  initialSpeed,
 	}
 }
 
 // SetHealth allows you to set the Health from outside the package
-func (ss *StaticStat) SetHealth(newHealth int) {
-	ss.Health = newHealth
+func (ss *staticStat) SetHealth(newHealth int) {
+	ss.health = newHealth
 }
 
 // GetHealth allows you to get the Health from outside the package
-func (ss *StaticStat) GetHealth() int {
-	return ss.Health
+func (ss *staticStat) GetHealth() int {
+	return ss.health
 }
 
 // SetMana allows you to set the Mana from outside the package
-func (ss *StaticStat) SetMana(newMana int) {
-	ss.Mana = newMana
+func (ss *staticStat) SetMana(newMana int) {
+	ss.mana = newMana
 }
 
 // GetMana allows you to get the Mana from outside the package
-func (ss *StaticStat) GetMana() int {
-	return ss.Mana
+func (ss *staticStat) GetMana() int {
+	return ss.mana
 }
 
 // SetSpeed allows you to set the Speed from outside the package
-func (ss *StaticStat) SetSpeed(newSpeed int) {
-	ss.Speed = newSpeed
+func (ss *staticStat) SetSpeed(newSpeed int) {
+	ss.speed = newSpeed
 }
 
 // GetSpeed allows you to get the Speed from outside the package
-func (ss *StaticStat) GetSpeed() int {
-	return ss.Speed
+func (ss *staticStat) GetSpeed() int {
+	return ss.speed
 }

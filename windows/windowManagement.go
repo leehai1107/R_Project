@@ -21,7 +21,7 @@ func Close() {
 
 func Process() {
 
-	playerData := entity.NewPlayer(cts.ModelPath, cts.TexturePath, cts.Position, cts.Scale)
+	playerData := entity.NewPlayer()
 	camera := camera.InitCamera3D()
 
 	for !rl.WindowShouldClose() {
@@ -30,7 +30,8 @@ func Process() {
 		if rl.IsKeyDown(rl.KeyZ) {
 			camera.Target = rl.NewVector3(0.0, 0.0, 0.0)
 		}
-		playerData.Movement(camera)
+		playerData.KeyboardMovement()
+    // playerData.Movement(camera)
 		rl.BeginDrawing()
 
 		rl.ClearBackground(rl.White)
@@ -39,13 +40,13 @@ func Process() {
 
 		rl.BeginMode3D(camera)
 		world.CreateWorld()
-		entity.Process(playerData)
-    playerData.DrawCollision()
+    playerData.Process()
+    playerData.DebugMode(true)
 
 		rl.EndMode3D()
 		rl.DrawFPS(10, 10)
 		//--------------------------------------------------------------------------------------
 		rl.EndDrawing()
 	}
-	defer entity.CleanUp(playerData)
+	defer playerData.CleanUp()
 }
