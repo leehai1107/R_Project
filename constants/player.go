@@ -11,3 +11,4 @@ const Scale float32 = 5
 var Health = 100
 var Mana = 100
 var Speed = 5
+var MoveSpeed float32 = 0.2

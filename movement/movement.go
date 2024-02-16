@@ -4,20 +4,20 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-func HandleMovement(pos rl.Vector3) rl.Vector3 {
+func HandleMovement(pos rl.Vector3, speed float32) rl.Vector3 {
 	/*TODO: Handle movement with keyboard for player */
 
   if rl.IsKeyDown(rl.KeyJ) {
-		pos.Z -= 0.2
+		pos.Z -= speed
 	}
 	if rl.IsKeyDown(rl.KeyL) {
-		pos.Z += 0.2
+		pos.Z += speed
 	}
 	if rl.IsKeyDown(rl.KeyI) {
-		pos.X -= 0.2
+		pos.X -= speed
 	}
 	if rl.IsKeyDown(rl.KeyK) {
-		pos.X += 0.2
+		pos.X += speed
 	}
   return pos
 }

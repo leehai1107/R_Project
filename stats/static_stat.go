@@ -5,18 +5,18 @@ type StaticStat interface {
 	GetHealth() int
 	SetMana(newMana int)
 	GetMana() int
-	SetSpeed(newSpeed int)
-	GetSpeed() int
+	SetSpeed(newSpeed float32)
+	GetSpeed() float32
 }
 
 type staticStat struct {
 	health int
 	mana   int
-	speed  int
+	speed  float32
 }
 
 // NewStaticStat creates a new instance of StaticStat with initial values
-func NewStaticStat(initialHealth, initialMana, initialSpeed int) StaticStat {
+func NewStaticStat(initialHealth, initialMana int ,initialSpeed float32) StaticStat {
 	return &staticStat{
 		health: initialHealth,
 		mana:   initialMana,
@@ -45,11 +45,11 @@ func (ss *staticStat) GetMana() int {
 }
 
 // SetSpeed allows you to set the Speed from outside the package
-func (ss *staticStat) SetSpeed(newSpeed int) {
+func (ss *staticStat) SetSpeed(newSpeed float32) {
 	ss.speed = newSpeed
 }
 
 // GetSpeed allows you to get the Speed from outside the package
-func (ss *staticStat) GetSpeed() int {
+func (ss *staticStat) GetSpeed() float32 {
 	return ss.speed
 }

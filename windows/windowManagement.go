@@ -15,8 +15,7 @@ type Windows interface {
 	Close()
 }
 
-type windows struct {
-}
+type windows struct{}
 
 func NewWindows() Windows {
 	return &windows{}
@@ -37,10 +36,10 @@ func (w *windows) Process() {
 	treeData := entity.NewTree()
 
 	for !rl.WindowShouldClose() {
-
+		playerData.HandleCollison(treeData.GetHitBox())
 		cameraData.UpdateCamera()
 		playerData.KeyboardMovement()
-		// playerData.Movement(camera)
+		// playerData.MouseMovement(camera.NewCamera3D().GetCamera())
 		rl.BeginDrawing()
 
 		rl.ClearBackground(rl.White)
@@ -60,5 +59,5 @@ func (w *windows) Process() {
 		rl.EndDrawing()
 	}
 	defer playerData.CleanUp()
-  defer treeData.CleanUp()
+	defer treeData.CleanUp()
 }

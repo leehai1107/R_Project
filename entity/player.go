@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"fmt"
+	"main/collision"
 	cts "main/constants"
 	"main/model"
 	"main/movement"
@@ -21,18 +23,21 @@ type Player interface {
 	moveObjectAlongPath(direction rl.Vector3)
 	moveAlongPath()
 	CleanUp()
+	HandleCollison(obj rl.BoundingBox)
 }
 
 type player struct {
-	model model.BaseModel
-	stat  stats.StaticStat
+	model  model.BaseModel
+	stat   stats.StaticStat
+	hitBox collision.HitBox
 }
 
 // NewPlayer creates a new instance of Player with initial values
 func NewPlayer() Player {
 	return &player{
-		model: model.NewBaseModel(cts.ModelPath, cts.TexturePath, cts.Position, cts.Scale),
-		stat:  stats.NewStaticStat(cts.Health, cts.Mana, cts.Speed),
+		model:  model.NewBaseModel(cts.ModelPath, cts.TexturePath, cts.Position, cts.Scale),
+		stat:   stats.NewStaticStat(cts.Health, cts.Mana, cts.MoveSpeed),
+		hitBox: collision.NewHitBox(cts.Vec3Zero, cts.Vec3Zero),
 	}
 }
 
@@ -62,7 +67,7 @@ func (p *player) MouseMovement(camera rl.Camera) {
 
 func (p *player) KeyboardMovement() {
 	// TODO: KeyboardMovement() here
-	p.model.SetPosition(movement.HandleMovement(p.model.GetPosition()))
+	p.model.SetPosition(movement.HandleMovement(p.model.GetPosition(),p.stat.GetSpeed()))
 }
 
 // moveAlongPath moves the player along the calculated path.
@@ -97,13 +102,12 @@ func (p *player) moveObjectAlongPath(direction rl.Vector3) {
 }
 
 func (p *player) DebugMode(mode bool) bool {
-	/*FIX:  recalculate the size of box */
 	if mode {
 		min := rl.NewVector3(p.model.GetPosition().X-1, p.model.GetPosition().Y, p.model.GetPosition().Z-1)
 		max := rl.NewVector3(p.model.GetPosition().X+1, p.model.GetPosition().Y+2, p.model.GetPosition().Z+1)
-		box := rl.NewBoundingBox(min, max)
-    
-		rl.DrawBoundingBox(box, rl.Green)
+		p.hitBox.SetHitBox(min, max)
+
+		rl.DrawBoundingBox(p.hitBox.GetHitBox(), rl.Green)
 		return true
 	}
 	return false
@@ -111,4 +115,12 @@ func (p *player) DebugMode(mode bool) bool {
 
 func (p *player) CleanUp() {
 	p.model.CleanUp(p.model.GetModel(), p.model.GetTexture())
+}
+
+//TODO: implement collison for player and tree
+
+func (p *player) HandleCollison(obj rl.BoundingBox) {
+	if p.hitBox.CheckHitBoxes(p.hitBox.GetHitBox(), obj) {
+		fmt.Println("On Hit!")
+	}
 }
