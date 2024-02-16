@@ -9,39 +9,50 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-func Init() {
-	rl.InitWindow(cts.ScreenWidth, cts.ScreenHeight, cts.Title)
-	rl.SetTargetFPS(60)
-
+type Windows interface {
+	Init()
+	Process()
+	Close()
 }
 
-func Close() {
+type windows struct {
+}
+
+func NewWindows() Windows {
+	return &windows{}
+}
+
+func (w *windows) Init() {
+	rl.InitWindow(cts.ScreenWidth, cts.ScreenHeight, cts.Title)
+	rl.SetTargetFPS(60)
+}
+
+func (w *windows) Close() {
 	rl.CloseWindow()
 }
 
-func Process() {
-
+func (w *windows) Process() {
 	playerData := entity.NewPlayer()
-	camera := camera.InitCamera3D()
+	cameraData := camera.NewCamera3D()
+	treeData := entity.NewTree()
 
 	for !rl.WindowShouldClose() {
 
-		rl.UpdateCamera(&camera, rl.CameraThirdPerson) // Update camera with free camera mode
-		if rl.IsKeyDown(rl.KeyZ) {
-			camera.Target = rl.NewVector3(0.0, 0.0, 0.0)
-		}
+		cameraData.UpdateCamera()
 		playerData.KeyboardMovement()
-    // playerData.Movement(camera)
+		// playerData.Movement(camera)
 		rl.BeginDrawing()
 
 		rl.ClearBackground(rl.White)
 		rl.DrawText(cts.Version, cts.Border, int32(rl.GetScreenHeight())-cts.FontSize*2-cts.Border-cts.Padding, cts.FontSize, rl.Black) // Version
-		rl.DrawText(cts.CopyRight, cts.Border, int32(rl.GetScreenHeight())-cts.FontSize-cts.Border, cts.FontSize, rl.Black)             //Copyright
+		rl.DrawText(cts.CopyRight, cts.Border, int32(rl.GetScreenHeight())-cts.FontSize-cts.Border, cts.FontSize, rl.Black)             // Copyright
 
-		rl.BeginMode3D(camera)
+		rl.BeginMode3D(cameraData.GetCamera())
 		world.CreateWorld()
-    playerData.Process()
-    playerData.DebugMode(true)
+		playerData.Process()
+		treeData.Process()
+		playerData.DebugMode(true)
+		treeData.DebugMode(true)
 
 		rl.EndMode3D()
 		rl.DrawFPS(10, 10)
@@ -49,4 +60,5 @@ func Process() {
 		rl.EndDrawing()
 	}
 	defer playerData.CleanUp()
+  defer treeData.CleanUp()
 }

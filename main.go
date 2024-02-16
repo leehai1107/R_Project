@@ -1,9 +1,7 @@
 package main
 
-import "main/windows"
+import "main/cmd"
 
 func main() {
-	windows.Init()
-	windows.Process()
-	defer windows.Close()
+	cmd.Start().Windows()
 }

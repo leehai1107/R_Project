@@ -4,22 +4,34 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-func InitCamera3D() rl.Camera3D {
-	// Define the camera to look into our 3d world
-	camera := rl.Camera3D{}
-	camera.Position = rl.NewVector3(10.0, 10.0, 10.0)
-	camera.Target = rl.NewVector3(0.0, 0.0, 0.0)
-	camera.Up = rl.NewVector3(0.0, 1.0, 0.0)
-	camera.Fovy = 45.0
-	camera.Projection = rl.CameraPerspective
-	return camera
+type Camera interface {
+	UpdateCamera()
+  GetCamera() rl.Camera3D
 }
 
-func UpdateCamera(camera *rl.Camera) {
-
+type camera struct {
+	camera3D rl.Camera3D
 }
 
-// resetCameraTarget resets the camera target to the default position.
-func ResetCameraTarget(camera *rl.Camera) {
-	camera.Target = rl.NewVector3(0.0, 0.0, 0.0)
+func NewCamera3D() Camera {
+	return &camera{
+		camera3D: rl.Camera3D{
+			Position:   rl.NewVector3(10.0, 10.0, 10.0),
+			Target:     rl.NewVector3(0.0, 0.0, 0.0),
+			Up:         rl.NewVector3(0.0, 1.0, 0.0),
+			Fovy:       45.0,
+			Projection: rl.CameraPerspective,
+		},
+	}
+}
+
+func (c *camera) UpdateCamera() {
+	rl.UpdateCamera(&c.camera3D, rl.CameraFree) // Update camera with free camera mode
+	if rl.IsKeyDown(rl.KeyZ) {
+		c.camera3D.Target = rl.NewVector3(0.0, 0.0, 0.0)
+	}
+}
+
+func (c *camera) GetCamera() rl.Camera3D{
+  return c.camera3D
 }

@@ -99,9 +99,10 @@ func (p *player) moveObjectAlongPath(direction rl.Vector3) {
 func (p *player) DebugMode(mode bool) bool {
 	/*FIX:  recalculate the size of box */
 	if mode {
-		min := rl.NewVector3(p.model.GetPosition().X, p.model.GetPosition().Y, p.model.GetPosition().Z)
-		max := rl.NewVector3(p.model.GetPosition().X+1, p.model.GetPosition().Y+1, p.model.GetPosition().Z+1)
+		min := rl.NewVector3(p.model.GetPosition().X-1, p.model.GetPosition().Y, p.model.GetPosition().Z-1)
+		max := rl.NewVector3(p.model.GetPosition().X+1, p.model.GetPosition().Y+2, p.model.GetPosition().Z+1)
 		box := rl.NewBoundingBox(min, max)
+    
 		rl.DrawBoundingBox(box, rl.Green)
 		return true
 	}

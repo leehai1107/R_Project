@@ -1,0 +1,49 @@
+package entity
+
+import (
+	cts "main/constants"
+	"main/model"
+	"main/stats"
+
+	rl "github.com/gen2brain/raylib-go/raylib"
+)
+
+type Tree interface{
+  Process()
+  DebugMode(mode bool)bool
+  CleanUp()
+}
+
+
+type tree struct {
+	model model.BaseModel
+  stat stats.StaticStat
+}
+
+func NewTree() Tree{
+return &tree{
+    model: model.NewBaseModel(cts.TreeModel,cts.TreeTexture,cts.TreePos,1),
+    stat: stats.NewStaticStat(cts.Health, 0,0),
+  }
+}
+
+func(p *tree) Process(){
+	p.model.Process(p.model.GetModel(), p.model.GetPosition(), p.model.GetScale())
+}
+
+func (p *tree) DebugMode(mode bool) bool {
+	if mode {
+		min := rl.NewVector3(p.model.GetPosition().X-1, p.model.GetPosition().Y, p.model.GetPosition().Z-1)
+		max := rl.NewVector3(p.model.GetPosition().X+1, p.model.GetPosition().Y+2, p.model.GetPosition().Z+1)
+		box := rl.NewBoundingBox(min, max)
+    
+		rl.DrawBoundingBox(box, rl.Green)
+		return true
+	}
+	return false
+}
+
+func (p *tree) CleanUp(){
+  p.model.CleanUp(p.model.GetModel(), p.model.GetTexture())
+}
+
